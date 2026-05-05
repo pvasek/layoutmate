@@ -12,7 +12,7 @@ enum WindowCapture {
     }
 
     /// Snapshots every visible (non-minimized) window of every regular running application,
-    /// excluding macscreen itself. Each window is tagged with the role of its host display
+    /// excluding LayoutMate itself. Each window is tagged with the role of its host display
     /// and its proportional frame within that display's bounds.
     static func capture(displays: [Display]) throws -> Layout {
         guard AXIsProcessTrusted() else { throw CaptureError.notTrusted }

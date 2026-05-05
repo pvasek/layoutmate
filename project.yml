@@ -1,4 +1,4 @@
-name: macscreen
+name: LayoutMate
 options:
   bundleIdPrefix: com.pavelvasek
   deploymentTarget:
@@ -10,9 +10,9 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     MACOSX_DEPLOYMENT_TARGET: "13.0"
-    PRODUCT_BUNDLE_IDENTIFIER: com.pavelvasek.macscreen
+    PRODUCT_BUNDLE_IDENTIFIER: com.pavelvasek.layoutmate
     GENERATE_INFOPLIST_FILE: NO
-    INFOPLIST_FILE: macscreen/Info.plist
+    INFOPLIST_FILE: LayoutMate/Info.plist
     CODE_SIGN_STYLE: Automatic
     CODE_SIGN_IDENTITY: "-"
     DEVELOPMENT_TEAM: ""
@@ -23,12 +23,12 @@ settings:
     SWIFT_TREAT_WARNINGS_AS_ERRORS: NO
 
 targets:
-  macscreen:
+  LayoutMate:
     type: application
     platform: macOS
     sources:
-      - path: macscreen
+      - path: LayoutMate
     settings:
       base:
-        PRODUCT_NAME: macscreen
+        PRODUCT_NAME: LayoutMate
         ASSETCATALOG_COMPILER_APPICON_NAME: ""

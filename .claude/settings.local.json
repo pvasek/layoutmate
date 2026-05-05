@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -project LayoutMate.xcodeproj -scheme LayoutMate -configuration Debug -destination 'platform=macOS' build)",
+      "WebSearch"
+    ]
+  }
+}

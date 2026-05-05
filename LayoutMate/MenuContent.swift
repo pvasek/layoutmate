@@ -14,7 +14,7 @@ struct MenuContent: View {
             if let lastAction = vm.lastAction {
                 Text(lastAction)
             }
-            Button("About macscreen") { showAbout() }
+            Button("About LayoutMate") { showAbout() }
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
         } else {

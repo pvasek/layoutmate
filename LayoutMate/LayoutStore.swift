@@ -21,7 +21,7 @@ enum LayoutStore {
                                    appropriateFor: nil,
                                    create: true))
             ?? fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
-        let dir = support.appendingPathComponent("macscreen", isDirectory: true)
+        let dir = support.appendingPathComponent("LayoutMate", isDirectory: true)
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
     }

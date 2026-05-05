@@ -1,4 +1,4 @@
-# macscreen — Technical Approach (v1)
+# LayoutMate — Technical Approach (v1)
 
 A short map from the spec to the code we're about to write. Not a tutorial — just the decisions.
 
@@ -32,7 +32,7 @@ The two non-trivial APIs are macOS-only C/Objective-C: `AXUIElement` for moving 
 | Read & move any app's window | `AXUIElement` + `kAXPositionAttribute`, `kAXSizeAttribute` |
 | Check / request Accessibility permission | `AXIsProcessTrustedWithOptions` |
 | List physical screens | `NSScreen.screens` |
-| Persist saved layout | JSON file in `~/Library/Application Support/macscreen/` |
+| Persist saved layout | JSON file in `~/Library/Application Support/LayoutMate/` |
 | Launch at login | `SMAppService.mainApp` (macOS 13+) |
 
 For v2 — display identity via `CGDirectDisplayID` + `IODisplayCreateInfoDictionary` (vendor / model / serial). Out of scope for v1, flagged so we don't paint ourselves into a corner.
@@ -42,10 +42,10 @@ For v2 — display identity via `CGDirectDisplayID` + `IODisplayCreateInfoDictio
 Flat, small. No premature folders.
 
 ```
-macscreen/
-  macscreen.xcodeproj
-  macscreen/
-    macscreenApp.swift            # @main, MenuBarExtra
+LayoutMate/
+  LayoutMate.xcodeproj
+  LayoutMate/
+    LayoutMateApp.swift            # @main, MenuBarExtra
     MenuContent.swift             # the dropdown UI
     WindowSnapshot.swift          # Codable: app bundle id, title, frame, screen index
     Layout.swift                  # collection of WindowSnapshots + metadata

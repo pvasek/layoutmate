@@ -1,9 +1,9 @@
 import SwiftUI
 
 @main
-struct MacscreenApp: App {
+struct LayoutMateApp: App {
     var body: some Scene {
-        MenuBarExtra("macscreen", systemImage: "macwindow.on.rectangle") {
+        MenuBarExtra("LayoutMate", systemImage: "macwindow.on.rectangle") {
             MenuContent()
         }
         .menuBarExtraStyle(.menu)

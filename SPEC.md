@@ -1,4 +1,4 @@
-# macscreen — Behavior Specification
+# LayoutMate — Behavior Specification
 
 A macOS menu-bar app that remembers where your windows were and puts them back.
 
@@ -6,7 +6,7 @@ A macOS menu-bar app that remembers where your windows were and puts them back.
 
 When you change displays — plug in a different external monitor, dock at a different desk, switch from HDMI to USB-C — macOS loses track of where your windows belong. Every app ends up dumped onto whichever screen survives, and you spend the next ten minutes dragging things back into place.
 
-macscreen lets you snapshot a window arrangement once, then restore it with a single click.
+LayoutMate lets you snapshot a window arrangement once, then restore it with a single click.
 
 ---
 
@@ -37,19 +37,19 @@ The menu bar icon briefly indicates success (e.g. a checkmark flash). No dialog 
 
 ### What "Restore layout" does
 
-For each window in the saved layout, macscreen tries to put a matching window back where it was:
+For each window in the saved layout, LayoutMate tries to put a matching window back where it was:
 
 - If the application is **running and has a matching window** → move and resize it.
 - If the application is **running but no matching window is open** → skip it. (v1 does not open documents or new windows.)
 - If the application is **not running** → skip it. (v1 does not launch apps.)
 
-"Matching" in v1 is best-effort: same application, and same window title if possible. If multiple windows could match, macscreen picks one and moves on rather than asking.
+"Matching" in v1 is best-effort: same application, and same window title if possible. If multiple windows could match, LayoutMate picks one and moves on rather than asking.
 
 If a saved window's screen no longer exists (e.g. the external monitor is unplugged), the window is placed on the main screen at the closest equivalent position that's actually visible.
 
 ### First-run experience
 
-The first time the user clicks **Save** or **Restore**, macOS will need permission to read and move other applications' windows (Accessibility permission). macscreen:
+The first time the user clicks **Save** or **Restore**, macOS will need permission to read and move other applications' windows (Accessibility permission). LayoutMate:
 
 1. Explains in plain language why the permission is needed.
 2. Opens the relevant System Settings pane for the user.
@@ -59,7 +59,7 @@ Until permission is granted, **Save** and **Restore** are visible but disabled, 
 
 ### Login behavior
 
-macscreen launches at login by default (toggleable in a small preferences area). It does **not** auto-restore on launch in v1 — restoring is always a deliberate user action.
+LayoutMate launches at login by default (toggleable in a small preferences area). It does **not** auto-restore on launch in v1 — restoring is always a deliberate user action.
 
 ### What v1 does *not* do
 
@@ -91,7 +91,7 @@ Each connected display is classified into a role:
 
 These slot assignments are **persistent per physical display** (keyed by the monitor's hardware identity from EDID, so unplug/replug/reboot doesn't lose them). They are *not* per-location — the user simply assigns slots once at each location, and the assignments stick to the physical hardware.
 
-The point of slots: at the office, the user says "the Dell on my left is External 1, the Dell on my right is External 2". At home, the user says "the LG is External 1, the Samsung is External 2". macscreen now knows which "1" and which "2" the user means in each place, and can place the same saved layout correctly in both.
+The point of slots: at the office, the user says "the Dell on my left is External 1, the Dell on my right is External 2". At home, the user says "the LG is External 1, the Samsung is External 2". LayoutMate now knows which "1" and which "2" the user means in each place, and can place the same saved layout correctly in both.
 
 ### Proportional capture and restore
 
@@ -122,7 +122,7 @@ The layered fold-down means windows always end up *somewhere visible*, even on h
 
 ### Automatic restore on display change (opt-in)
 
-When macscreen detects that the connected display set has changed, it offers — or, if the user opted in, automatically performs — a restore. (Lower priority than the above; the manual Restore is the foundation.)
+When LayoutMate detects that the connected display set has changed, it offers — or, if the user opted in, automatically performs — a restore. (Lower priority than the above; the manual Restore is the foundation.)
 
 ---
 
