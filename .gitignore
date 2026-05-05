@@ -1,0 +1,25 @@
+# Xcode
+build/
+DerivedData/
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+
+# Swift
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# User-specific
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+
+# Claude Code per-project state
+.claude/
