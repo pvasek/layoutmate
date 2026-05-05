@@ -17,11 +17,18 @@ struct NormalizedFrame: Codable, Equatable {
 ///    proportionally. If exact role isn't available, fall down to the next-best (see
 ///    `WindowRestorer.computeTargetFrame`).
 /// 2. `absoluteFrame` — last-resort fallback when no role info is usable.
+///
+/// `spaceID` records which macOS Space the window was on at capture. Restore filters to
+/// snapshots whose `(displayRole, spaceID)` matches what's currently foregrounded on the
+/// corresponding display, so the user can swipe between Spaces and Restore on each. If
+/// the private Space-readback API is unavailable, this stays `nil` and the per-Space
+/// filter is skipped (degrades to v2 behavior).
 struct WindowSnapshot: Codable, Equatable {
     let bundleId: String
     let appName: String
     let title: String
     let displayRole: DisplayRole?
+    let spaceID: UInt64?
     let normalizedFrame: NormalizedFrame?
     let absoluteFrame: CGRect
 }

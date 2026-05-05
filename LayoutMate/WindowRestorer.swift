@@ -11,6 +11,12 @@ enum WindowRestorer {
     /// Best-effort restore: walks each saved window, finds a matching live window of the same
     /// app, computes its target frame for the *current* display set (proportionally where
     /// possible, falling back if the original role isn't available), and moves it.
+    ///
+    /// When snapshots carry a `spaceID`, restore filters to those whose `(role, spaceID)`
+    /// matches what's currently foregrounded on each display — so swipe-then-Restore only
+    /// touches the windows that belong on the visible Space. Snapshots without a spaceID
+    /// (capture happened before private API was available, or read failed) are always
+    /// considered eligible — they fall back to v2-style placement.
     static func restore(_ layout: Layout, currentDisplays: [Display]) -> Result {
         var result = Result()
 
@@ -25,7 +31,27 @@ enum WindowRestorer {
             uniquingKeysWith: { first, _ in first }
         )
 
-        let snapshotsByBundle = Dictionary(grouping: layout.windows, by: { $0.bundleId })
+        // Map each display role to its currently-foregrounded Space ID, used to filter
+        // saved snapshots down to "windows that belong on a visible Space right now."
+        var currentSpaceByRole: [DisplayRole: UInt64] = [:]
+        for display in currentDisplays {
+            guard let cgID = display.screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+                  let spaceID = SpaceDiscovery.currentSpaceID(for: cgID)
+            else { continue }
+            currentSpaceByRole[display.role] = spaceID
+        }
+
+        let eligible = layout.windows.filter { snap in
+            guard let role = snap.displayRole, let savedSpace = snap.spaceID else {
+                // No Space tag — restore unconditionally (v2-style).
+                return true
+            }
+            // If we can't read the current Space for this display, don't filter on it.
+            guard let currentSpace = currentSpaceByRole[role] else { return true }
+            return savedSpace == currentSpace
+        }
+
+        let snapshotsByBundle = Dictionary(grouping: eligible, by: { $0.bundleId })
 
         for (bundleId, snapshots) in snapshotsByBundle {
             result.attempted += snapshots.count

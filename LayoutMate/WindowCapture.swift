@@ -12,10 +12,25 @@ enum WindowCapture {
     }
 
     /// Snapshots every visible (non-minimized) window of every regular running application,
-    /// excluding LayoutMate itself. Each window is tagged with the role of its host display
-    /// and its proportional frame within that display's bounds.
+    /// excluding LayoutMate itself. Each window is tagged with the role of its host display,
+    /// the macOS Space ID currently foregrounded on that display (if the private read API
+    /// is available), and its proportional frame within that display's bounds.
+    ///
+    /// Note: AX only exposes windows on the *current* Space per display. So a single capture
+    /// only covers whatever Spaces are foregrounded right now — to record other Spaces, the
+    /// user swipes to them and Saves again, and the view-model layer merges results.
     static func capture(displays: [Display]) throws -> Layout {
         guard AXIsProcessTrusted() else { throw CaptureError.notTrusted }
+
+        // Resolve each display's currently-foregrounded Space ID once up front.
+        // Lookup table keyed by display fingerprint so we don't query CGS per window.
+        var spaceIDByDisplay: [String: UInt64] = [:]
+        for display in displays {
+            if let cgID = cgDisplayID(for: display.screen),
+               let spaceID = SpaceDiscovery.currentSpaceID(for: cgID) {
+                spaceIDByDisplay[display.identity.fingerprint] = spaceID
+            }
+        }
 
         let ownPID = ProcessInfo.processInfo.processIdentifier
         var snapshots: [WindowSnapshot] = []
@@ -37,12 +52,14 @@ enum WindowCapture {
                 let title = AX.string(window, kAXTitleAttribute) ?? ""
                 let host = hostDisplay(for: frame, in: displays)
                 let normalized = host.map { normalize(frame, to: $0.frame) }
+                let spaceID = host.flatMap { spaceIDByDisplay[$0.identity.fingerprint] }
 
                 snapshots.append(WindowSnapshot(
                     bundleId: bundleId,
                     appName: appName,
                     title: title,
                     displayRole: host?.role,
+                    spaceID: spaceID,
                     normalizedFrame: normalized,
                     absoluteFrame: frame
                 ))
@@ -50,6 +67,10 @@ enum WindowCapture {
         }
 
         return Layout(savedAt: Date(), windows: snapshots)
+    }
+
+    private static func cgDisplayID(for screen: NSScreen) -> CGDirectDisplayID? {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
     }
 
     private static func hostDisplay(for frame: CGRect, in displays: [Display]) -> Display? {

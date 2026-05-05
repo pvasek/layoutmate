@@ -42,7 +42,7 @@ struct MenuContent: View {
 
     @ViewBuilder
     private func displayRow(_ display: Display) -> some View {
-        let label = "\(display.localizedName) — \(display.role.displayLabel)"
+        let label = "\(display.localizedName) — \(display.role.displayLabel)\(spaceSuffix(for: display))"
         if display.isBuiltIn || vm.totalKnownSlots < 2 {
             Text(label)
         } else {
@@ -56,6 +56,17 @@ struct MenuContent: View {
                 }
             }
         }
+    }
+
+    /// Appends "  •  Space N" to the row when we know the current Space ID for that
+    /// display. The number isn't macOS's "Desktop 1/2/..." index (we don't have public
+    /// access to that), it's the underlying private Space ID — useful as a stable
+    /// label for "you're on the same Space as last time" comparison.
+    private func spaceSuffix(for display: Display) -> String {
+        if let id = vm.currentSpaceByRole[display.role] ?? nil {
+            return "  •  Space \(id)"
+        }
+        return ""
     }
 
     @ViewBuilder

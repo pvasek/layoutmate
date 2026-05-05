@@ -134,7 +134,7 @@ v2 sees and moves windows only on the currently-active macOS Space. Windows on o
 
 The natural next step after v2: stop pretending Spaces don't exist.
 
-The constraint that shapes v3 is that the macOS APIs we're willing to depend on (no private CGS calls, no SIP changes) only let us see and move windows on the **current** Space. So v3 doesn't try to magic windows onto other Spaces from a single Save/Restore click — the user does the swiping, LayoutMate does the windows.
+The constraint that shapes v3 is that the Accessibility API only sees windows on the **current** Space, and macOS doesn't publicly expose Space identifiers. So v3 reads the current Space ID through a private CoreGraphics routine (`CGSCopyManagedDisplaySpaces`) to tag each snapshot — the same technique Hammerspoon uses, no SIP changes — but it never moves windows between Spaces or switches Spaces programmatically. The user swipes between Spaces; LayoutMate handles the windows on whichever Space is current.
 
 ### What it adds
 
@@ -150,9 +150,9 @@ macOS doesn't give third-party apps a stable, persistent Space ID across reboots
 
 ### Why no automatic Space-switching in v3
 
-The private CGS routines that other tools use to switch and move windows between Spaces (`CGSCopySpacesForWindows`, `CGSAddWindowsToSpaces`, etc.) work without SIP changes — but Apple has been breaking them across recent macOS releases (notably `moveWindowToSpace` regressed in Sequoia 15.0 and remains broken on later versions). Any v3 feature that depended on those would be one OS update away from breaking silently.
+There are *two* sets of private CGS routines: the **read** side (current Space, list of Spaces) which has been stable for years and is what Hammerspoon's `hs.spaces` uses today; and the **write** side (move window between Spaces, switch Spaces) which Apple regressed in Sequoia 15.0 and hasn't restored. v3 uses only the read side. If the read side ever breaks, snapshots simply lose their spaceID field and the app falls back to v2 behavior — no crash, no data loss.
 
-So v3 commits to: **the user swipes between Spaces; LayoutMate handles the windows on whichever Space is current.** It works on any macOS version we run on. A v4 (below) can layer optional automation on top.
+So v3 commits to: **the user swipes between Spaces; LayoutMate handles the windows on whichever Space is current.** A v4 (below) can layer optional automation on top.
 
 ## v4 — Automated Space-switching (later, conditional)
 

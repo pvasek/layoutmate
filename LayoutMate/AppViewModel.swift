@@ -16,6 +16,11 @@ final class AppViewModel: ObservableObject {
     /// max(connected externals, total known slots). When < 2 the menu omits the submenu.
     @Published private(set) var totalKnownSlots: Int = 0
 
+    /// Per-display "(role, currentSpaceID?)" so the menu can tell the user which Space
+    /// Save/Restore would operate on right now. `nil` spaceID means the private read
+    /// API didn't return a value for that display.
+    @Published private(set) var currentSpaceByRole: [DisplayRole: UInt64?] = [:]
+
     private var data: StoreData = LayoutStore.load()
     private var observer: NSObjectProtocol?
 
@@ -38,18 +43,58 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - User actions
 
+    /// Captures windows on the currently-foregrounded Space of each display, then merges
+    /// the result into the stored layout: any previously-saved snapshots whose
+    /// `(displayRole, spaceID)` matches a freshly-captured one are *replaced*; snapshots
+    /// from other Spaces are preserved untouched. So you can Save once per Space (swipe,
+    /// Save, swipe, Save) and accumulate a full multi-Space layout without losing
+    /// previously-saved Spaces.
     func saveLayout() {
         do {
-            let layout = try WindowCapture.capture(displays: displays)
-            data.layout = layout
+            let fresh = try WindowCapture.capture(displays: displays)
+
+            // Set of (role, spaceID) pairs that are currently active and being re-saved.
+            var visibleKeys: Set<SpaceKey> = []
+            for snap in fresh.windows {
+                if let role = snap.displayRole, let space = snap.spaceID {
+                    visibleKeys.insert(SpaceKey(role: role, spaceID: space))
+                }
+            }
+
+            // Keep prior snapshots EXCEPT those targeting currently-visible Spaces; those
+            // get replaced by the fresh captures.
+            let preserved: [WindowSnapshot]
+            if visibleKeys.isEmpty {
+                // Couldn't determine any current Space (private API unavailable). Fall
+                // back to v2-style overwrite to avoid leaking stale data.
+                preserved = []
+            } else {
+                preserved = (data.layout?.windows ?? []).filter { snap in
+                    guard let role = snap.displayRole, let space = snap.spaceID else { return true }
+                    return !visibleKeys.contains(SpaceKey(role: role, spaceID: space))
+                }
+            }
+
+            let merged = Layout(savedAt: Date(), windows: preserved + fresh.windows)
+            data.layout = merged
             try LayoutStore.save(data)
             hasSavedLayout = true
-            savedAt = layout.savedAt
-            let count = layout.windows.count
-            lastAction = "Saved \(count) window\(count == 1 ? "" : "s")"
+            savedAt = merged.savedAt
+
+            let captured = fresh.windows.count
+            let kept = preserved.count
+            lastAction = kept == 0
+                ? "Saved \(captured) window\(captured == 1 ? "" : "s")"
+                : "Saved \(captured), kept \(kept) from other Spaces"
         } catch {
             lastAction = "Save failed: \(error.localizedDescription)"
         }
+    }
+
+    /// Composite key used to identify "this Space on this display role".
+    private struct SpaceKey: Hashable {
+        let role: DisplayRole
+        let spaceID: UInt64
     }
 
     func restoreLayout() {
@@ -102,5 +147,12 @@ final class AppViewModel: ObservableObject {
         let connectedExternals = classified.filter { !$0.isBuiltIn }.count
         let knownSlots = data.displayRoles.values.max() ?? 0
         totalKnownSlots = max(connectedExternals, knownSlots)
+
+        var nextSpaceMap: [DisplayRole: UInt64?] = [:]
+        for display in classified {
+            let cgID = display.screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+            nextSpaceMap[display.role] = cgID.flatMap(SpaceDiscovery.currentSpaceID(for:))
+        }
+        currentSpaceByRole = nextSpaceMap
     }
 }

@@ -21,6 +21,7 @@
 		AC08FE546C84377F96E7C886 /* WindowSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 576FB792CFB57894DD7AA099 /* WindowSnapshot.swift */; };
 		D9E7386E640AAF6E0EF51953 /* WindowCapture.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF4DAF2DE4C24E75392D41CE /* WindowCapture.swift */; };
 		E30CAB2AEB66826A45E6E541 /* AppViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 367EC134F85DAEBE553CFCC5 /* AppViewModel.swift */; };
+		F102E9FB27DCB19B35DAF9C1 /* SpaceDiscovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5D2192E22FF0C919D4D4C4B /* SpaceDiscovery.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		AE245945B42E60EB8C3FD7E3 /* DisplayDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayDiscovery.swift; sourceTree = "<group>"; };
 		AF4DAF2DE4C24E75392D41CE /* WindowCapture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowCapture.swift; sourceTree = "<group>"; };
 		CD39F93B32DDA0B5CDFCF7A3 /* Geometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Geometry.swift; sourceTree = "<group>"; };
+		D5D2192E22FF0C919D4D4C4B /* SpaceDiscovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceDiscovery.swift; sourceTree = "<group>"; };
 		ECE95DC60512E49124D19A6E /* AXHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AXHelpers.swift; sourceTree = "<group>"; };
 		F68DBC3639042DD8BE8E9A53 /* MenuContent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuContent.swift; sourceTree = "<group>"; };
 		FD768B8F2D83D017369904E7 /* DisplayRole.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayRole.swift; sourceTree = "<group>"; };
@@ -58,6 +60,7 @@
 				176A48F9B531CC87B6BE69CD /* LayoutMateApp.swift */,
 				04B96D8CE7B3D79BB52B5911 /* LayoutStore.swift */,
 				F68DBC3639042DD8BE8E9A53 /* MenuContent.swift */,
+				D5D2192E22FF0C919D4D4C4B /* SpaceDiscovery.swift */,
 				AF4DAF2DE4C24E75392D41CE /* WindowCapture.swift */,
 				8E3AB3EEE74492AACDA2B7CC /* WindowRestorer.swift */,
 				576FB792CFB57894DD7AA099 /* WindowSnapshot.swift */,
@@ -151,6 +154,7 @@
 				8BD4BE0E14145905BF3F4A3A /* LayoutMateApp.swift in Sources */,
 				23BAAB877BEA9F5EE3D195D2 /* LayoutStore.swift in Sources */,
 				3B54246DAE685799A2859DE0 /* MenuContent.swift in Sources */,
+				F102E9FB27DCB19B35DAF9C1 /* SpaceDiscovery.swift in Sources */,
 				D9E7386E640AAF6E0EF51953 /* WindowCapture.swift in Sources */,
 				5CBD5A045D209D69409EE84E /* WindowRestorer.swift in Sources */,
 				AC08FE546C84377F96E7C886 /* WindowSnapshot.swift in Sources */,
