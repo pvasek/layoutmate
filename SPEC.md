@@ -124,6 +124,45 @@ The layered fold-down means windows always end up *somewhere visible*, even on h
 
 When LayoutMate detects that the connected display set has changed, it offers — or, if the user opted in, automatically performs — a restore. (Lower priority than the above; the manual Restore is the foundation.)
 
+### Limitation: only the current Space
+
+v2 sees and moves windows only on the currently-active macOS Space. Windows on other Spaces are invisible to the Accessibility API and are neither captured by Save nor moved by Restore. If you have layouts spread across multiple Spaces (Mission Control desktops), Save/Restore covers one Space at a time — the one that's foregrounded when you click. Multi-Space support is the focus of v3.
+
+---
+
+## v3 — Per-Space save and restore
+
+The natural next step after v2: stop pretending Spaces don't exist.
+
+The constraint that shapes v3 is that the macOS APIs we're willing to depend on (no private CGS calls, no SIP changes) only let us see and move windows on the **current** Space. So v3 doesn't try to magic windows onto other Spaces from a single Save/Restore click — the user does the swiping, LayoutMate does the windows.
+
+### What it adds
+
+- **Per-Space layout slots.** Instead of one global layout per role assignment, there's one per `(monitor set state, Space index on each display)`. Each Space gets its own snapshot.
+- **Save** captures only the windows on whichever Space is currently foregrounded, against the current Space index.
+- **Restore** does the same in reverse: with a given Space active, click Restore, the windows for *that* Space (and only that Space) are placed.
+- **Menu reflects the current Space.** The menu shows something like "Active: built-in Space 2 of 4" so you know what slot Save/Restore is operating on.
+- **Bulk restore** (optional): a "Restore all" menu item that walks each Space in turn (using the same swipe-to-target-Space gesture the user would do manually), running Restore on each. Same private-API caveat as v4 below — gated by feature detection, falls back gracefully.
+
+### Identifying a Space
+
+macOS doesn't give third-party apps a stable, persistent Space ID across reboots through public APIs. v3 sidesteps this by identifying each Space by its **position index on its display** (e.g. "2nd Space on built-in"). This is what the user sees in Mission Control and matches their mental model. Reordering Spaces in Mission Control would shift saved layouts accordingly — that's a known wart but matches how the user thinks about Spaces.
+
+### Why no automatic Space-switching in v3
+
+The private CGS routines that other tools use to switch and move windows between Spaces (`CGSCopySpacesForWindows`, `CGSAddWindowsToSpaces`, etc.) work without SIP changes — but Apple has been breaking them across recent macOS releases (notably `moveWindowToSpace` regressed in Sequoia 15.0 and remains broken on later versions). Any v3 feature that depended on those would be one OS update away from breaking silently.
+
+So v3 commits to: **the user swipes between Spaces; LayoutMate handles the windows on whichever Space is current.** It works on any macOS version we run on. A v4 (below) can layer optional automation on top.
+
+## v4 — Automated Space-switching (later, conditional)
+
+If v3 turns out to be tedious enough in practice, v4 adds optional automation using the private CGS APIs:
+
+- Programmatically switch to each saved Space during a "Restore all" pass.
+- Read window-to-Space mapping at Save time so we know which Space each window belongs to without the user telling us.
+
+Both are gated by feature detection — if the private APIs are missing or broken on the current macOS, LayoutMate falls back to v3's manual flow with a one-line notice. No SIP changes ever; if a feature would need that, it stays in the "not happening" column.
+
 ---
 
 ## Non-goals (probably ever)
