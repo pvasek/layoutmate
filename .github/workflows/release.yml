@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version number (e.g. 0.1.0)"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release"
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    name: Build and publish
+    runs-on: macos-14
+    permissions:
+      contents: write
+
+    env:
+      VERSION: ${{ inputs.version }}
+      PRERELEASE: ${{ inputs.prerelease }}
+      BUILD_NUMBER: ${{ github.run_number }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Reject anything that isn't a clean SemVer string before letting it touch shell.
+      - name: Validate version
+        run: |
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "Invalid version: '$VERSION' (expected MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-prerelease)"
+            exit 1
+          fi
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Stamp version into Info.plist
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" LayoutMate/Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" LayoutMate/Info.plist
+
+      - name: Build Release
+        run: |
+          xcodebuild \
+            -project LayoutMate.xcodeproj \
+            -scheme LayoutMate \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath build \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM="" \
+            build
+
+      - name: Package .app as zip
+        run: |
+          ditto -c -k --keepParent --sequesterRsrc \
+            build/Build/Products/Release/LayoutMate.app \
+            "LayoutMate-$VERSION.zip"
+          ls -lh "LayoutMate-$VERSION.zip"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          args=(--title "LayoutMate $VERSION" --generate-notes)
+          if [[ "$PRERELEASE" == "true" ]]; then
+            args+=(--prerelease)
+          fi
+          gh release create "v$VERSION" "${args[@]}" \
+            "LayoutMate-$VERSION.zip"
