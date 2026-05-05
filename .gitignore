@@ -1,25 +1,22 @@
-# Xcode
+# Build output / DerivedData
 build/
 DerivedData/
-*.xcodeproj/
-*.xcworkspace/
-xcuserdata/
-*.xcuserstate
+.build/
 
 # macOS
 .DS_Store
 
-# Swift
-.build/
-.swiftpm/
-Packages/
-Package.resolved
-
-# User-specific
+# Xcode user-specific state (not the project structure itself, which is tracked)
+xcuserdata/
+*.xcuserstate
 *.pbxuser
 *.mode1v3
 *.mode2v3
 *.perspectivev3
+*.xcscmblueprint
+*.xccheckout
 
-# Claude Code per-project state
-.claude/
+# Swift Package Manager (no SPM deps in this project, but excluded if anything generates them)
+.swiftpm/
+Packages/
+Package.resolved
