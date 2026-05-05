@@ -3,9 +3,18 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: "Version number (e.g. 0.1.0)"
+      bump:
+        description: "Version bump (ignored if 'override' is set)"
         required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
+      override:
+        description: "Explicit version override (e.g. 0.2.0-beta.1). Optional."
+        required: false
         type: string
       prerelease:
         description: "Mark as pre-release"
@@ -20,21 +29,48 @@ jobs:
       contents: write
 
     env:
-      VERSION: ${{ inputs.version }}
+      BUMP: ${{ inputs.bump }}
+      OVERRIDE: ${{ inputs.override }}
       PRERELEASE: ${{ inputs.prerelease }}
       BUILD_NUMBER: ${{ github.run_number }}
 
     steps:
-      - name: Checkout
+      - name: Checkout (full history for tag lookup)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      # Reject anything that isn't a clean SemVer string before letting it touch shell.
-      - name: Validate version
+      - name: Compute next version
         run: |
+          LATEST=$(git tag --list 'v[0-9]*' --sort=-v:refname \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | head -1 || true)
+
+          if [[ -n "$OVERRIDE" ]]; then
+            VERSION="$OVERRIDE"
+            REASON="explicit override"
+          elif [[ -z "$LATEST" ]]; then
+            VERSION="0.1.0"
+            REASON="first release (no prior v*.*.*  tag)"
+          else
+            CURRENT="${LATEST#v}"
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+            case "$BUMP" in
+              major) VERSION="$((MAJOR+1)).0.0" ;;
+              minor) VERSION="$MAJOR.$((MINOR+1)).0" ;;
+              patch) VERSION="$MAJOR.$MINOR.$((PATCH+1))" ;;
+              *) echo "Unknown bump: $BUMP"; exit 1 ;;
+            esac
+            REASON="$BUMP bump from $LATEST"
+          fi
+
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
-            echo "Invalid version: '$VERSION' (expected MAJOR.MINOR.PATCH or MAJOR.MINOR.PATCH-prerelease)"
+            echo "Resolved version is not valid SemVer: '$VERSION'"
             exit 1
           fi
+
+          echo "Resolved version: $VERSION  ($REASON)"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
 
       - name: Install xcodegen
         run: brew install xcodegen
