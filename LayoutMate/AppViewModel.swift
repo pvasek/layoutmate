@@ -48,12 +48,8 @@ final class AppViewModel: ObservableObject {
     // MARK: - User actions
 
     /// One click of Save walks every Space on every connected display, capturing windows
-    /// on each, then returns each display to whichever Space was foregrounded when the
-    /// user clicked. So a single Save covers all virtual desktops.
-    ///
-    /// Walk uses private `CGSManagedDisplaySetCurrentSpace`. If that's not callable
-    /// (returns no Spaces), we fall back to a single-Space capture of whatever's
-    /// currently visible.
+    /// on each. Always ends back on the Space the user was on, with the originally-focused
+    /// app re-activated, regardless of how the walk went.
     func saveLayout() {
         guard !isWorking else { return }
         isWorking = true
@@ -101,12 +97,13 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - Save / restore walks
 
+    private typealias OriginalSpace = (uuid: String, spaceID: SpaceDiscovery.SpaceID)
+
     private func runSaveAcrossAllSpaces() async {
         let cgIDs = displays.compactMap { $0.cgDisplayID }
         let displaySpaces = SpaceDiscovery.enumerate(displayIDs: cgIDs)
 
-        // Fallback when the private API isn't usable: capture only what's currently
-        // visible, store it as-is.
+        // Fallback when the private API isn't usable.
         guard !displaySpaces.isEmpty else {
             do {
                 let fresh = try WindowCapture.capture(displays: displays)
@@ -122,11 +119,17 @@ final class AppViewModel: ObservableObject {
             return
         }
 
+        // Snapshot the pre-walk state ONCE. Everything else flows from these so even if the
+        // walk goes sideways we can put the user exactly back where they started.
+        let originalSpaces: [OriginalSpace] = displaySpaces.map { ($0.displayUUID, $0.currentSpaceID) }
+        let originallyFrontmost = NSWorkspace.shared.frontmostApplication
+
         let totalSpaces = displaySpaces.reduce(0) { $0 + $1.allSpaceIDs.count }
         var collected: [WindowSnapshot] = []
+        var captureError: Error?
         var visited = 0
 
-        for ds in displaySpaces {
+        walking: for ds in displaySpaces {
             guard let display = displays.first(where: { $0.cgDisplayID == ds.displayID }) else { continue }
 
             for spaceID in ds.allSpaceIDs {
@@ -140,10 +143,6 @@ final class AppViewModel: ObservableObject {
 
                 do {
                     let fresh = try WindowCapture.capture(displays: displays)
-                    // Keep only this display's windows, retag with the spaceID we're on
-                    // (capture's own spaceID readback is for the foregrounded Space at the
-                    // moment of call — for windows on other displays that's unrelated, but
-                    // for this display it's the one we just switched to).
                     let mine = fresh.windows.filter { $0.displayRole == display.role }
                     let tagged = mine.map { snap in
                         WindowSnapshot(
@@ -158,14 +157,18 @@ final class AppViewModel: ObservableObject {
                     }
                     collected.append(contentsOf: tagged)
                 } catch {
-                    lastAction = "Save failed: \(error.localizedDescription)"
-                    return
+                    captureError = error
+                    break walking
                 }
             }
+        }
 
-            // Return this display to where the user left it before moving on.
-            SpaceDiscovery.setCurrentSpace(ds.currentSpaceID, on: ds.displayUUID)
-            try? await Task.sleep(nanoseconds: spaceSwitchSettleNs)
+        // Single deterministic return-to-original at the very end. Runs even on error.
+        await returnToOriginals(originalSpaces, frontmost: originallyFrontmost)
+
+        if let error = captureError {
+            lastAction = "Save failed: \(error.localizedDescription)"
+            return
         }
 
         let merged = Layout(savedAt: Date(), windows: collected)
@@ -186,13 +189,15 @@ final class AppViewModel: ObservableObject {
         let cgIDs = displays.compactMap { $0.cgDisplayID }
         let displaySpaces = SpaceDiscovery.enumerate(displayIDs: cgIDs)
 
-        // Fallback when private API isn't usable: just restore on the current Space.
         guard !displaySpaces.isEmpty else {
             let result = WindowRestorer.restore(layout, currentDisplays: displays)
             let skipped = result.skipped > 0 ? " (skipped \(result.skipped))" : ""
             lastAction = "Restored \(result.moved)/\(result.attempted)\(skipped) (current Space only — Space API unavailable)"
             return
         }
+
+        let originalSpaces: [OriginalSpace] = displaySpaces.map { ($0.displayUUID, $0.currentSpaceID) }
+        let originallyFrontmost = NSWorkspace.shared.frontmostApplication
 
         var totalMoved = 0
         var totalSkipped = 0
@@ -217,23 +222,35 @@ final class AppViewModel: ObservableObject {
                 totalMoved += result.moved
                 totalSkipped += result.skipped
             }
-
-            SpaceDiscovery.setCurrentSpace(ds.currentSpaceID, on: ds.displayUUID)
-            try? await Task.sleep(nanoseconds: spaceSwitchSettleNs)
         }
+
+        await returnToOriginals(originalSpaces, frontmost: originallyFrontmost)
 
         let skipped = totalSkipped > 0 ? " (skipped \(totalSkipped))" : ""
         lastAction = "Restored \(totalMoved) windows\(skipped)"
     }
 
+    /// Switches every display back to the Space it was on when the user clicked, then
+    /// re-activates the originally-frontmost app so the focused window lands where it was.
+    /// Generous wait at the end so animations finish before we return control.
+    private func returnToOriginals(_ originals: [OriginalSpace], frontmost: NSRunningApplication?) async {
+        for (uuid, spaceID) in originals {
+            SpaceDiscovery.setCurrentSpace(spaceID, on: uuid)
+        }
+        try? await Task.sleep(nanoseconds: returnSettleNs)
+        // Re-activate AFTER the Space switches have settled, so activate doesn't drag
+        // macOS into a different Space to find the app's window.
+        frontmost?.activate()
+    }
+
     /// macOS's Space-switch animation runs ~500 ms; this is the wait between switching and
-    /// reading the new state.
+    /// reading the new state during the walk.
     private let spaceSwitchDelayNs: UInt64 = 600_000_000
 
-    /// Shorter wait when settling the display back to its original Space at end of walk —
-    /// nothing's reading state during this delay, it just keeps the next display's iteration
-    /// from starting in the middle of the previous display's animation.
-    private let spaceSwitchSettleNs: UInt64 = 350_000_000
+    /// Final settle wait at the end of the walk — slightly longer because every display is
+    /// being switched at once and we want all the animations to be done before we declare
+    /// the user is "back home."
+    private let returnSettleNs: UInt64 = 1_000_000_000
 
     // MARK: - Internals
 
