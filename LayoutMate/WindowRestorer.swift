@@ -82,16 +82,19 @@ enum WindowRestorer {
         return result
     }
 
-    /// Match strategy: prefer exact title; otherwise, if the app exposes only one window, take it;
-    /// otherwise skip. Predictable beats clever for this version.
+    /// Match strategy: prefer exact title match; otherwise take the first available window
+    /// from the pool. The fallback is what makes multi-window apps with empty/identical
+    /// titles (terminal emulators, document apps that don't set AX titles) actually move —
+    /// each saved snapshot pairs with the next live window in declaration order. Pairing
+    /// might not preserve "which window had which contents," but the visible arrangement
+    /// (N windows at N saved positions) comes out right.
     private static func matchIndex(for snapshot: WindowSnapshot,
                                    in windows: [AXUIElement]) -> Int? {
         if !snapshot.title.isEmpty,
            let idx = windows.firstIndex(where: { AX.string($0, kAXTitleAttribute) == snapshot.title }) {
             return idx
         }
-        if windows.count == 1 { return 0 }
-        return nil
+        return windows.isEmpty ? nil : 0
     }
 
     /// Layered fallback for placing a saved window on the currently-connected display set:

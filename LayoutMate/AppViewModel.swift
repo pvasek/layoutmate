@@ -233,14 +233,33 @@ final class AppViewModel: ObservableObject {
     /// Switches every display back to the Space it was on when the user clicked, then
     /// re-activates the originally-frontmost app so the focused window lands where it was.
     /// Generous wait at the end so animations finish before we return control.
+    ///
+    /// `tickleWindowServer` runs in the middle: programmatic Space switching via the
+    /// private CGS API logically changes which Space is foregrounded, but the wallpaper
+    /// and Dock layer often don't redraw until something nudges the window server.
+    /// A 1-pixel cursor jiggle is the standard workaround — invisible to the user, but
+    /// it prods the system to refresh the visible Space.
     private func returnToOriginals(_ originals: [OriginalSpace], frontmost: NSRunningApplication?) async {
         for (uuid, spaceID) in originals {
             SpaceDiscovery.setCurrentSpace(spaceID, on: uuid)
         }
         try? await Task.sleep(nanoseconds: returnSettleNs)
+        tickleWindowServer()
         // Re-activate AFTER the Space switches have settled, so activate doesn't drag
         // macOS into a different Space to find the app's window.
         frontmost?.activate()
+    }
+
+    /// Forces the window server to redraw by warping the cursor 1 pixel and back. This
+    /// addresses a known glitch where `CGSManagedDisplaySetCurrentSpace` switches the
+    /// logical Space without triggering a full visual refresh — leaving the wallpaper
+    /// and chrome from the previously-visible Space painted on screen.
+    private func tickleWindowServer() {
+        let cocoa = NSEvent.mouseLocation
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        let cg = CGPoint(x: cocoa.x, y: primaryHeight - cocoa.y)
+        CGWarpMouseCursorPosition(CGPoint(x: cg.x + 1, y: cg.y))
+        CGWarpMouseCursorPosition(cg)
     }
 
     /// macOS's Space-switch animation runs ~500 ms; this is the wait between switching and
