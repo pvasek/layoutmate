@@ -71,9 +71,10 @@ struct MenuContent: View {
 
     @ViewBuilder
     private var actionsSection: some View {
-        Button("Save layout") { vm.saveLayout() }
+        Button("Save layout (all Spaces)") { vm.saveLayout() }
+            .disabled(vm.isWorking)
         Button(restoreButtonTitle) { vm.restoreLayout() }
-            .disabled(!vm.hasSavedLayout)
+            .disabled(!vm.hasSavedLayout || vm.isWorking)
     }
 
     private var restoreButtonTitle: String {
@@ -81,9 +82,9 @@ struct MenuContent: View {
             let formatter = DateFormatter()
             formatter.dateStyle = .none
             formatter.timeStyle = .short
-            return "Restore layout (saved \(formatter.string(from: savedAt)))"
+            return "Restore layout (all Spaces, saved \(formatter.string(from: savedAt)))"
         }
-        return "Restore layout"
+        return "Restore layout (all Spaces)"
     }
 
     // MARK: - Helpers

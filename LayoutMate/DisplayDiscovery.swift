@@ -19,6 +19,10 @@ struct Display {
     let localizedName: String
     let isBuiltIn: Bool
     let role: DisplayRole
+
+    var cgDisplayID: CGDirectDisplayID? {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+    }
 }
 
 enum DisplayDiscovery {

@@ -148,20 +148,26 @@ The constraint that shapes v3 is that the Accessibility API only sees windows on
 
 macOS doesn't give third-party apps a stable, persistent Space ID across reboots through public APIs. v3 sidesteps this by identifying each Space by its **position index on its display** (e.g. "2nd Space on built-in"). This is what the user sees in Mission Control and matches their mental model. Reordering Spaces in Mission Control would shift saved layouts accordingly — that's a known wart but matches how the user thinks about Spaces.
 
-### Why no automatic Space-switching in v3
+### Private CGS used: read + goto, not move
 
-There are *two* sets of private CGS routines: the **read** side (current Space, list of Spaces) which has been stable for years and is what Hammerspoon's `hs.spaces` uses today; and the **write** side (move window between Spaces, switch Spaces) which Apple regressed in Sequoia 15.0 and hasn't restored. v3 uses only the read side. If the read side ever breaks, snapshots simply lose their spaceID field and the app falls back to v2 behavior — no crash, no data loss.
+There are three relevant sets of private CGS routines, and v3's stance on each is different:
 
-So v3 commits to: **the user swipes between Spaces; LayoutMate handles the windows on whichever Space is current.** A v4 (below) can layer optional automation on top.
+- **Read** (`CGSCopyManagedDisplaySpaces`): list current and all Spaces per display. Stable for years, used by Hammerspoon. v3 uses it.
+- **Goto** (`CGSManagedDisplaySetCurrentSpace`): switch which Space is foregrounded on a given display. Also stable on macOS 26; this is the *switching* family. v3 uses it to walk every Space during a single Save (or Restore) so one click captures all virtual desktops.
+- **Move-window-to-other-Space** (`CGSAddWindowsToSpaces` / `CGSMoveWindowsToManagedSpace`): regressed in Sequoia 15.0 and hasn't been fixed since. v3 deliberately doesn't touch this. We never move individual windows between Spaces — we only switch the foregrounded Space and let macOS show whatever windows live there.
 
-## v4 — Automated Space-switching (later, conditional)
+If any of the read or goto APIs is unavailable at runtime, snapshots lose their spaceID and Save/Restore degrade to single-Space behavior. No crash, no data loss.
 
-If v3 turns out to be tedious enough in practice, v4 adds optional automation using the private CGS APIs:
+### What one Save click does
 
-- Programmatically switch to each saved Space during a "Restore all" pass.
-- Read window-to-Space mapping at Save time so we know which Space each window belongs to without the user telling us.
+1. Reads the current Space ID for each display, plus the list of all Spaces per display.
+2. For each display, walks each of its Spaces in turn: switch → wait ~600 ms for the animation → capture the windows currently visible on *this* display, retag them with the Space ID we just switched to.
+3. After processing each display, returns it to the Space the user was on when they clicked Save.
+4. Saves the merged result. Across N displays with M Spaces each, this is N·M switches and takes a few seconds.
 
-Both are gated by feature detection — if the private APIs are missing or broken on the current macOS, LayoutMate falls back to v3's manual flow with a one-line notice. No SIP changes ever; if a feature would need that, it stays in the "not happening" column.
+### What one Restore click does
+
+The mirror image: walk every Space that has saved data, swipe to it, run the placement pass, return each display to its original Space. Spaces with no saved windows for a given display are skipped — we only visit what we'd actually do something on.
 
 ---
 
